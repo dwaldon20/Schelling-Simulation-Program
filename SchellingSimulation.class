@@ -1,0 +1,224 @@
+import student.media.*;
+import java.awt.Color;
+import student.util.Random;
+
+/**
+ *  Represents an image that will model 
+ *  the neighborhood for simulation.
+ *
+ *  @author dwaldon
+ *  @version 2023.03.13
+ */
+public class SchellingSimulation
+    extends Picture
+{
+    private double satisfactionThreshold;
+    private int redLine;
+    
+    /**
+     * Initializes a newly created SchellingSimulation object.
+     * 
+     * @param width For width of simulation
+     * @param height For height of simulation
+     */
+    public SchellingSimulation(int width, int height)
+    {
+        super(width, height);
+        satisfactionThreshold = 0.3;
+        redLine = 0;
+    }
+    
+    /**
+     * Getter method that returns the satisfaction 
+     * threshold.
+     * 
+     * @return satisfaction threshold value
+     */
+    public double getSatisfactionThreshold()
+    {
+        return this.satisfactionThreshold;
+    }
+    
+    /**
+     * Setter method that changes the satisfaction 
+     * threshold to the specified value.
+     * 
+     * @param satisfactionThreshold Name for satisfactionThreshold
+     */
+    public void setSatisfactionThreshold(double satisfactionThreshold)
+    {
+        this.satisfactionThreshold = satisfactionThreshold;
+    }
+    
+    /**
+     * Getter method that returns the redline value
+     * 
+     * @return red line value
+     */
+    public int getRedLine()
+    {
+        return this.redLine;
+    }
+    
+    /**
+     * Setter method that changes the redline to 
+     * specified value.
+     * 
+     * @param redLine Name for redLine
+     */
+    public void setRedLine(int redLine)
+    {
+        this.redLine = redLine;
+    }
+    
+    /**
+     * Paint the image with randomized collection of
+     * blue and orange pixels. Other pixels
+     * will be left alone represented by white.
+     * 
+     * @param bluePer Name to represent X agent or blue X
+     * @param orangePer Name to represent O agent or orange O
+     */
+    public void populate(double bluePer, double orangePer)
+    {
+        Random generator = Random.generator();
+        
+        for (Pixel pix : this.getPixels())
+        {
+            double x = generator.nextDouble();
+            if (x <= bluePer) 
+            {
+                pix.setColor(Color.BLUE);
+            }
+            else if (x <= (orangePer + bluePer) && pix.getY() >= this.redLine) 
+            {
+                pix.setColor(Color.ORANGE);
+            }
+            else
+            {
+                pix.setColor(Color.WHITE);
+            } 
+        }
+    }
+    
+    /**
+     * Returns a boolean value on wether
+     * the two pixels have the same color.
+     * 
+     * @param a Name for object of Pixel to get color 1
+     * @param b Name for object of Pixel to get color 2
+     * 
+     * @return true for same color, false if not
+     */
+    public boolean areSameColor(Pixel a, Pixel b)
+    {
+        Color color1 = a.getColor();
+        Color color2 = b.getColor();
+        return color1.equals(color2);
+    }
+    
+    /**
+     * Object pixel used to determine if pixel is white 
+     * representing an empty location
+     * 
+     * @param w Name for Pixel object to see if white
+     * 
+     * @return true if white, false if not
+     */
+    public boolean isEmpty(Pixel w)
+    {
+        Color color = w.getColor();
+        return color.equals(Color.WHITE);
+    }
+    
+    /**
+     * Returns result on whether an agent of a 
+     * specific color is satisfied at Pixel location.
+     * 
+     * @param agent Name for Pixel agent
+     * @param agentColor Name for Color color
+     * 
+     * @return true if satisfied, false if not
+     */
+    public boolean isSatisfied(Pixel agent, Color agentColor)
+    {
+        double sameAgent = 0;
+        double diffAgent = 0;
+        for (Pixel neighbor : agent.getNeighborPixels())
+        {
+            if (neighbor.getColor().equals(agentColor))
+            {
+                sameAgent++;
+            }
+            else if (!neighbor.getColor().equals(Color.WHITE))
+            {
+                diffAgent++;
+            }
+        }
+        
+        double satisfaction = sameAgent / (sameAgent + diffAgent);
+        if ((sameAgent + diffAgent) == 0.0)
+        {
+            return true;
+        }
+        return satisfaction >= this.getSatisfactionThreshold();
+    }
+    
+    /**
+     * Move agent to new pixel 
+     * location below redline if occupied by orange agent.
+     * If location is empty and will satisfy agent move, 
+     * if not or not open do not move. Return true if 
+     * moved, false if not.
+     * 
+     * @param move Pixel object to determine if agent moved
+     * 
+     * @return true if relocated, false if not
+     */
+    public boolean maybeRelocate(Pixel move)
+    { 
+        Random generator = Random.generator(); 
+        int x = generator.nextInt(this.getWidth());
+        int y = generator.nextInt(this.getHeight());
+        
+        Pixel pix = this.getPixel(x, y);
+        if (move.getColor().equals(Color.ORANGE) && y <= this.redLine)
+        {
+            return false;          
+        }
+        if (isEmpty(pix) && isSatisfied(pix, move.getColor()))
+        {
+            pix.setColor(move.getColor());
+            move.setColor(Color.WHITE);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    
+    /**
+     * Loop over all pixels checking if empty or 
+     * occupied. Checks if occupied pixel is satisfied,
+     * if not attempt to relocate. Returns the total 
+     * number of succesful moves after processing all
+     * pixels.
+     * 
+     * @return the amount of succesful cycles
+     */
+    public int cycleAgents()
+    {
+        int successfulMoves = 0;
+        
+        for (Pixel pix: this.getPixels())
+        {
+            if (!(isEmpty(pix) || isSatisfied(pix, pix.getColor()))
+                && maybeRelocate(pix))
+            {
+                successfulMoves++;
+            }
+        }
+        return successfulMoves;
+    }
+}  
